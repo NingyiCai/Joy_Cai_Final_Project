@@ -1,0 +1,510 @@
+import time
+
+import adafruit_ht16k33.matrix
+import board
+import busio as io
+import touchio
+from digitalio import DigitalInOut, Direction, Pull
+
+
+
+#switchpin = machine.Pin(board.A1, machine.Pin.IN, machine.PIn.PULL_UP)
+#microcontroller.enable_interrupts()
+
+# touch = touchio.TouchIn(board.A2)
+i2c = io.I2C(board.SCL, board.SDA)
+matrix = adafruit_ht16k33.matrix.Matrix8x8(i2c)
+switch = DigitalInOut(board.A1)
+# pixels initializers
+x_pix = y_pix = 8
+x = y = 0
+matrix.fill(0)
+matrix.show()
+
+#switchL = DigitalInOut(board.A2)
+#switchL.direction = Direction.INPUT
+#switchL.pull = Pull.UP
+
+# counter for animation frames
+frame_count = 0
+
+# import devices
+Button_1 = DigitalInOut(board.A2)
+Button_1.direction = Direction.INPUT
+Button_1.pull = Pull.UP
+Button_2 = DigitalInOut(board.A3)
+Button_2.direction = Direction.INPUT
+Button_2.pull = Pull.UP
+
+# define button state
+pre_Button_1_value = False
+
+
+# define machine states
+def main():
+    state = "Glancing"
+    frame = 0
+    pre_frame = frame
+    while True:
+        if switch.value is True:
+
+            print("Current_state", state, "frame", frame )
+            state_next = state
+
+            # Get inputs of button:
+            Button_1_value =  not Button_1.value
+            Button_1_change = Button_1_value is True and pre_Button_1_value is False
+            pre_Button_1_value = Button_1_value
+            Button_2_value =  not Button_2.value
+            Button_2_change = Button_2_value is True and pre_Button_2_value is False
+            pre_Button_2_value = Button_2_value
+            # Calculate next state
+            if (state == "Glancing"):
+                if (Button_1_change is True):
+                    state_next = "Left_Dance"
+                if (Button_2_change is True):
+                    state_next = "Playing"
+            if (state == "Left_Dance"):
+                if (Button_1_change is True):
+                    state_next = "Right_Dance"
+                if (Button_2_change is True):
+                    state_next = "Eating"
+            if (state == "Right_Dance"):
+                if (Button_1_change is True):
+                    state_next = "Glancing"
+                if (Button_2_change is True):
+                    state_next = "Eating"
+            if (state == "Eating"):
+                if (Button_1_change is True):
+                    state_next = "Left_Dance"
+                if (Button_2_change is True):
+                    state_next = "Playing"
+            if (state == "Playing"):
+                if (Button_1_change is True):
+                    state_next = "Left_Dance"
+                if (Button_2_change is True):
+                    state_next = "Last_Dance"
+            if (state == "Last_Dance"):
+                if (Button_1_change is True):
+                    state_next = "Left_Dance"
+                if (Button_2_change is True):
+                    state_next = "Glancing"
+
+            # same for state PLAYING
+            # Before updating state <- state_next
+            # Show frame corresponding to that state
+            if (Button_2_change or Button_1_change):
+                frame = 0
+                pre_frame = frame
+
+
+            if (state == "Eating"):
+                mode = Eating
+                #Show Glancing....
+            if (state == "Playing"):
+                mode = Playing
+                #Show Right Niu
+            if (state == "Glancing"):
+                mode = Glancing
+            if (state == "Left_Dance"):
+                mode = Left_Dance
+            if (state == "Right_Dance"):
+                mode = Right_Dance
+            if (state == "Last_Dance"):
+                mode = Last_Dance
+
+            frame_count = len(mode)
+            frame_delay = 0.3
+            frame_time = time.monotonic() + frame_delay
+
+            if time.monotonic() >= frame_time:
+                # switch the frame
+                # reset the next frame time
+                frame_time = time.monotonic() + frame_delay
+            # show the current frame
+            #if (frame >= len(Glancing)):
+                #frame = 0
+            show_frame(mode[frame])
+            frame += 1
+            if frame >= frame_count:
+                frame = 0
+            #Finally update state <- state_next
+            state = state_next
+            #FIXME
+            time.sleep(0.1)
+        else:
+            for x in range(8):
+                for y in range(8):
+                    matrix.pixel(x, y, 0)
+            matrix.show()
+
+# animation bitmaps
+stand = \
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [1, 1, 0, 0, 0, 0, 1, 1]]
+sit =\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 0, 0, 1, 1, 0],
+     [1, 1, 1, 0, 0, 1, 1, 1]]
+
+
+
+big_face=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 0, 0, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+eat_1=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 0, 0, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+eat_2=\
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 1, 0, 0, 1, 1, 1],
+     [0, 1, 1, 0, 0, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0]]
+
+
+
+angry_1=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 0, 1, 1, 0, 0, 1],
+     [1, 0, 0, 1, 1, 0, 0, 1],
+     [1, 1, 1, 0, 0, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+glancing_1=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 0, 1, 0, 0, 1],
+     [1, 1, 0, 0, 1, 0, 0, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+glancing_2=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 0, 0, 1, 0, 0, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+glancing_3=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 0, 1, 0, 0, 1, 1],
+     [1, 0, 0, 1, 0, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+glancing_4=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 0, 0, 1, 0, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+
+
+
+Transform_4=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 0, 0],
+     [1, 1, 1, 1, 1, 0, 0, 0],
+     [1, 0, 0, 1, 0, 0, 0, 0],
+     [1, 1, 1, 1, 1, 0, 0, 0],
+     [0, 1, 1, 1, 1, 1, 0, 0]]
+
+Transform_4_1=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 0, 1, 1, 0, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+
+
+Transform_5=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 1, 1, 1, 1, 1, 0],
+     [0, 0, 0, 1, 1, 1, 1, 1],
+     [0, 0, 0, 0, 1, 0, 0, 1],
+     [0, 0, 0, 1, 1, 1, 1, 1],
+     [0, 0, 1, 1, 1, 1, 1, 0]]
+
+Transform_5_1=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 0, 1, 1, 0, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0]]
+
+Dance_6_1=\
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 0, 1, 1, 0, 1, 0],
+     [1, 0, 1, 0, 0, 1, 0, 1]]
+
+Dance_6_2=\
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 0, 1, 1, 0, 1, 0],
+     [0, 1, 0, 0, 0, 0, 1, 0]]
+
+Dance_6_3=\
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 0, 0, 0, 0, 1, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_4=\
+    [[0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 0, 0, 0, 0, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 0],
+     [0, 0, 0, 0, 0, 0, 1, 0]]
+
+Dance_6_5=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [0, 1, 1, 1, 1, 0, 0, 0],
+     [0, 0, 1, 0, 0, 0, 0, 0],
+     [1, 1, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_5=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [1, 0, 1, 0, 0, 1, 0, 1]]
+
+Dance_6_6=\
+    [[0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 0, 0, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [0, 1, 0, 0, 0, 0, 1, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [1, 1, 0, 0, 0, 0, 1, 1]]
+
+Dance_6_7=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 1, 1, 0, 0, 1, 1, 0]]
+
+Dance_6_8=\
+    [[0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 0, 1, 0, 0, 1, 0, 1],
+     [0, 0, 1, 0, 0, 1, 0, 0]]
+
+Dance_6_9=\
+    [[0, 0, 1, 0, 0, 1, 0, 0],
+     [1, 0, 1, 0, 0, 1, 0, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 0, 0, 0, 0, 1, 0]]
+
+Dance_6_10=\
+    [[0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 0, 1, 0, 0, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [0, 0, 0, 1, 1, 1, 1, 1],
+     [0, 0, 0, 0, 0, 1, 0, 1],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_11=\
+    [[0, 0, 1, 0, 0, 1, 0, 0],
+     [1, 0, 1, 0, 0, 1, 0, 1],
+     [1, 1, 1, 1, 1, 1, 1, 1],
+     [1, 1, 0, 1, 1, 0, 1, 1],
+     [1, 1, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 0, 0, 0],
+     [0, 0, 1, 0, 0, 0, 0, 0],
+     [0, 1, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_12=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 0, 0, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 1, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_13=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 0, 1, 1, 0, 0, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 1, 0, 0, 0],
+     [0, 0, 0, 0, 1, 0, 0, 0]]
+
+Dance_6_14=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 0, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 1, 0, 0, 0, 1, 0],
+     [0, 0, 0, 1, 0, 1, 0, 0],
+     [0, 0, 0, 0, 1, 0, 0, 0]]
+
+Dance_6_15=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 0, 0, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_16=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 1, 1, 0, 0, 1, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 1, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Dance_6_17=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 0, 1, 1, 0, 0, 1],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 1, 0, 0, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0]]
+
+Dance_6_18=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [1, 1, 0, 0, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 0],
+     [0, 0, 0, 0, 0, 1, 1, 1],
+     [0, 0, 0, 0, 1, 0, 1, 0]]
+
+Dance_6_19=\
+    [[0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 0, 0, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 1, 1, 1, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0]]
+# pack frames
+Left_Dance = [Transform_4, Transform_4_1]
+Right_Dance = [Transform_5, Transform_5_1]
+Glancing = [glancing_1, glancing_2, glancing_3, glancing_4]
+Eating = [big_face, eat_1, eat_2]
+Playing = [stand, sit]
+Last_Dance = [Dance_6_1, Dance_6_3, Dance_6_2, Dance_6_4, Dance_6_5, Dance_6_6, Dance_6_7, Dance_6_8, Dance_6_9, Dance_6_10, \
+Dance_6_11, Dance_6_12, Dance_6_13, \
+Dance_6_14, Dance_6_15, Dance_6_16, Dance_6_17, \
+Dance_6_18, Dance_6_19, Transform_4, Transform_4_1, stand, sit]
+
+def show_frame(frame):
+    for x in range(8):
+        for y in range(8):
+            matrix.pixel(x, y, frame[x][y])
+
+    matrix.show()
+def callback(line):
+    print("line =", line)
+
+
+frame = 0
+pre_frame = frame
+
+frame_delay = 0.25
+frame_time = time.monotonic() + frame_delay
+
+main()
+
+
